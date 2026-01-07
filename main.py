@@ -12,7 +12,7 @@ except:
     API_KEY = "SECURED"
 
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- 2. FONCTIONS BASE DE DONNÉES ---
 def sauvegarder_repas(nom, cal, prot, glu, lip):
