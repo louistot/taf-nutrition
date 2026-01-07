@@ -4,8 +4,12 @@ from PIL import Image
 import json
 import sqlite3
 import pandas as pd
+from streamlit_option_menu import option_menu
 
-# --- 1. CONFIGURATION SÉCURISÉE ---
+# --- 1. CONFIGURATION ---
+st.set_page_config(page_title="TAF Nutrition", page_icon="🍎", layout="centered")
+
+# Récupération sécurisée de la clé
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
@@ -14,7 +18,7 @@ except:
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# --- 2. FONCTIONS BASE DE DONNÉES ---
+# --- 2. BASE DE DONNÉES ---
 def sauvegarder_repas(nom, cal, prot, glu, lip):
     conn = sqlite3.connect('taf_data.db')
     c = conn.cursor()
@@ -25,90 +29,82 @@ def sauvegarder_repas(nom, cal, prot, glu, lip):
     conn.commit()
     conn.close()
 
-def charger_historique():
-    conn = sqlite3.connect('taf_data.db')
-    try:
-        df = pd.read_sql_query("SELECT date, nom, cal, prot, glu, lip FROM historique ORDER BY date DESC", conn)
-    except:
-        df = pd.DataFrame()
-    conn.close()
-    return df
+# --- 3. BARRE DE NAVIGATION (STYLE APPLE EN BAS) ---
+# Ce composant crée la barre horizontale comme sur ton image 4320
+selected = option_menu(
+    menu_title=None, 
+    options=["Scanner", "Historique"], 
+    icons=["camera", "clock-history"], 
+    menu_icon="cast", 
+    default_index=0, 
+    orientation="horizontal",
+    styles={
+        "container": {"padding": "0!important", "background-color": "#0E1117", "border-radius": "0px"},
+        "icon": {"color": "white", "font-size": "20px"}, 
+        "nav-link": {"font-size": "16px", "text-align": "center", "margin":"0px", "--hover-color": "#262730"},
+        "nav-link-selected": {"background-color": "#FF4B4B"},
+    }
+)
 
-# --- 3. NAVIGATION ---
-st.sidebar.title("Menu TAF")
-page = st.sidebar.radio("Aller vers :", ["Scanner mon plat", "Mon Historique"])
-
-if page == "Scanner mon plat":
+# --- PAGE SCANNER ---
+if selected == "Scanner":
     st.title("📸 TAF : Analyseur")
-    uploaded_file = st.file_uploader("Prends ton plat en photo...", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("Charge ton plat...", type=["jpg", "jpeg", "png"])
 
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Ton plat", use_column_width=True)
+        st.image(image, use_column_width=True)
         
-        if st.button("Calculer les calories 🚀"):
-            with st.spinner("Analyse en cours..."):
-                prompt = """
-                Analyse l'image. Réponds UNIQUEMENT en JSON :
-                {
-                    "plat": "nom", "calories": 400, "proteines": 25, 
-                    "glucides": 40, "lipides": 15, "note_perte": 4, "note_prise": 3
-                }
-                """
-                response = model.generate_content([prompt, image])
-                
+        if st.button("Calculer les calories 🚀", use_container_width=True):
+            with st.spinner("Analyse par l'IA..."):
                 try:
-                    clean_res = response.text.replace('```json', '').replace('```', '').strip()
-                    res = json.loads(clean_res)
+                    prompt = "Analyse l'image. Réponds UNIQUEMENT en JSON : {'plat': 'nom', 'calories': 0, 'proteines': 0, 'glucides': 0, 'lipides': 0, 'note_perte': 0, 'note_prise': 0}"
+                    response = model.generate_content([prompt, image])
+                    res = json.loads(response.text.replace('```json', '').replace('```', '').strip())
+                    
                     sauvegarder_repas(res['plat'], res['calories'], res['proteines'], res['glucides'], res['lipides'])
 
-                    # --- AFFICHAGE STYLE IMG_4319 ---
+                    # AFFICHAGE STYLE IMG_4319
                     st.header(f"🍴 {res['plat']}")
-                    
-                    # Grand bloc Calories
-                    st.container()
                     st.metric("TOTAL MANGÉES", f"{res['calories']} kcal")
-                    
                     st.markdown("---")
                     
-                    # Colonnes pour les Macros (Glucides, Protéines, Lipides)
+                    # Les 3 colonnes de Macros
                     col1, col2, col3 = st.columns(3)
-                    
                     with col1:
-                        st.write("**Glucides**")
-                        st.progress(min(res['glucides']/150, 1.0))
+                        st.caption("Glucides")
+                        st.progress(min(res['glucides']/200, 1.0))
                         st.subheader(f"{res['glucides']}g")
-                        
                     with col2:
-                        st.write("**Protéines**")
-                        st.progress(min(res['proteines']/80, 1.0))
+                        st.caption("Protéines")
+                        st.progress(min(res['proteines']/100, 1.0))
                         st.subheader(f"{res['proteines']}g")
-                        
                     with col3:
-                        st.write("**Lipides**")
-                        st.progress(min(res['lipides']/50, 1.0))
+                        st.caption("Lipides")
+                        st.progress(min(res['lipides']/80, 1.0))
                         st.subheader(f"{res['lipides']}g")
 
-                    st.success("Analyse terminée !")
                     st.markdown("---")
+                    # Les notes étoiles
+                    c1, c2 = st.columns(2)
+                    c1.write(f"**Perte de Poids**\n{'⭐' * res['note_perte']}")
+                    c2.write(f"**Prise de Masse**\n{'⭐' * res['note_prise']}")
 
-                    # Bloc des Notes (Étoiles)
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        st.write("**Perte de Poids**")
-                        st.write("⭐" * res['note_perte'])
-                    with col_b:
-                        st.write("**Prise de Masse**")
-                        st.write("⭐" * res['note_prise'])
+                except Exception as e:
+                    st.error("Limite atteinte ou erreur réseau. Réessaie plus tard !")
 
-                except:
-                    st.error("Erreur d'analyse. Réessaie !")
-
+# --- PAGE HISTORIQUE ---
 else:
     st.title("📅 Mon Historique")
-    historique = charger_historique()
-    if not historique.empty:
-        st.line_chart(historique.set_index('date')['cal'])
-        st.dataframe(historique)
-    else:
-        st.write("Aucun repas enregistré.")
+    conn = sqlite3.connect('taf_data.db')
+    try:
+        df = pd.read_sql_query("SELECT * FROM historique ORDER BY date DESC", conn)
+        if not df.empty:
+            st.line_chart(df.set_index('date')['cal'])
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Aucun repas enregistré.")
+    except:
+        st.info("Historique vide.")
+    finally:
+        conn.close()
