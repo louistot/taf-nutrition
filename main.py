@@ -11,7 +11,7 @@ try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
     # Si tu lances en local, il cherchera une clé manuelle
-    API_KEY = "AIzaSyDtOzqo5bPUEAV4pNPhbtXaQvCXTVJhxPM"
+    API_KEY = ""
 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
