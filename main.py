@@ -58,7 +58,7 @@ if selected == "Scanner":
         if st.button("Calculer les calories 🚀", use_container_width=True):
             with st.spinner("Analyse par l'IA..."):
                 try:
-                    prompt = "Analyse l'image en tant expert en nutition. Réponds UNIQUEMENT en JSON : {'plat': 'nom', 'calories': 0, 'proteines': 0, 'glucides': 0, 'lipides': 0, 'note_perte': 0, 'note_prise': 0}"
+                    prompt = "Analyse l'image. Réponds UNIQUEMENT en JSON : {'plat': 'nom', 'calories': 0, 'proteines': 0, 'glucides': 0, 'lipides': 0, 'note_perte': 0, 'note_prise': 0}"
                     response = model.generate_content([prompt, image])
                     res = json.loads(response.text.replace('```json', '').replace('```', '').strip())
                     
