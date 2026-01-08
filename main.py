@@ -58,7 +58,8 @@ if selected == "Scanner":
         if st.button("Calculer les calories 🚀", use_container_width=True):
             with st.spinner("Analyse par l'IA..."):
                 try:
-                    prompt = "En tant qu'expert en nutrition, analyse cette image de repas avec précision.Évalue les portions (poids estimé en grammes) pour chaque aliment visible afin de calculer les calories et les macros.
+                    prompt = """
+                    En tant qu'expert en nutrition, analyse cette image de repas avec précision.Évalue les portions (poids estimé en grammes) pour chaque aliment visible afin de calculer les calories et les macros.
 Réponds UNIQUEMENT au format JSON strict suivant :" {'plat': 'nom', 'calories': 0, 'proteines': 0, 'glucides': 0, 'lipides': 0, 'note_perte': 0, 'note_prise': 0}"
                     response = model.generate_content([prompt, image])
                     res = json.loads(response.text.replace('```json', '').replace('```', '').strip())
